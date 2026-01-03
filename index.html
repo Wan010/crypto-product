@@ -6,6 +6,7 @@
   <title>Crypto Price Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       box-sizing: border-box;
@@ -39,9 +40,6 @@
     .ticker-scroll {
       animation: ticker 30s linear infinite;
     }
-    .chart-bar {
-      transition: height 0.5s ease-out;
-    }
     .price-up { color: #00ff88; }
     .price-down { color: #ff4757; }
     .bg-up { background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 255, 136, 0.05)); }
@@ -49,6 +47,18 @@
     .loading {
       opacity: 0.5;
       pointer-events: none;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(0, 255, 136, 0.3);
+      border-radius: 50%;
+      border-top-color: #00ff88;
+      animation: spin 1s ease-in-out infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -65,27 +75,43 @@
     <div class="max-w-7xl mx-auto px-4 py-6">
       <!-- Header -->
       <header class="mb-8 slide-up" style="animation-delay: 0.1s;">
-        <h1 id="dashboard-title" class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">Crypto Dashboard</h1>
-        <p id="welcome-message" class="text-slate-400 mt-2">Real-time cryptocurrency market overview</p>
+        <div class="flex justify-between items-center">
+          <div>
+            <h1 id="dashboard-title" class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">Crypto Dashboard</h1>
+            <p id="welcome-message" class="text-slate-400 mt-2">Real-time cryptocurrency market overview</p>
+          </div>
+          <div class="text-right">
+            <div class="text-sm text-slate-500">Last Updated</div>
+            <div id="last-updated" class="mono text-sm text-slate-400">--:--:--</div>
+          </div>
+        </div>
       </header>
       
       <!-- Market Stats -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800 slide-up" style="animation-delay: 0.2s;">
           <p class="text-slate-500 text-sm mb-1">Market Cap</p>
-          <p class="text-xl font-semibold mono" id="market-cap">Loading...</p>
+          <p class="text-xl font-semibold mono" id="market-cap">
+            <div class="spinner" style="width: 20px; height: 20px; margin: 4px auto;"></div>
+          </p>
         </div>
         <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800 slide-up" style="animation-delay: 0.25s;">
           <p class="text-slate-500 text-sm mb-1">24h Volume</p>
-          <p class="text-xl font-semibold mono" id="volume">Loading...</p>
+          <p class="text-xl font-semibold mono" id="volume">
+            <div class="spinner" style="width: 20px; height: 20px; margin: 4px auto;"></div>
+          </p>
         </div>
         <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800 slide-up" style="animation-delay: 0.3s;">
           <p class="text-slate-500 text-sm mb-1">BTC Dominance</p>
-          <p class="text-xl font-semibold mono" id="btc-dom">Loading...</p>
+          <p class="text-xl font-semibold mono" id="btc-dom">
+            <div class="spinner" style="width: 20px; height: 20px; margin: 4px auto;"></div>
+          </p>
         </div>
         <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800 slide-up" style="animation-delay: 0.35s;">
-          <p class="text-slate-500 text-sm mb-1">Active Coins</p>
-          <p class="text-xl font-semibold mono" id="active-coins">Loading...</p>
+          <p class="text-slate-500 text-sm mb-1">Fear & Greed</p>
+          <p class="text-xl font-semibold mono" id="fear-greed">
+            <div class="spinner" style="width: 20px; height: 20px; margin: 4px auto;"></div>
+          </p>
         </div>
       </div>
       
@@ -93,9 +119,29 @@
       <div class="grid lg:grid-cols-3 gap-6">
         <!-- Price Cards -->
         <div class="lg:col-span-2 space-y-4">
-          <h2 class="text-lg font-semibold text-slate-300 mb-4">Top Cryptocurrencies</h2>
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-slate-300">Top Cryptocurrencies</h2>
+            <button id="refresh-btn" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition-colors">
+              Refresh Data
+            </button>
+          </div>
           <div id="crypto-cards" class="space-y-3">
-            <!-- Populated by JS -->
+            <!-- Loading skeleton -->
+            <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-slate-800 animate-pulse"></div>
+                  <div>
+                    <div class="h-4 w-24 bg-slate-800 rounded animate-pulse"></div>
+                    <div class="h-3 w-12 bg-slate-800 rounded animate-pulse mt-1"></div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="h-5 w-32 bg-slate-800 rounded animate-pulse"></div>
+                  <div class="h-4 w-16 bg-slate-800 rounded animate-pulse mt-1 ml-auto"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -107,8 +153,8 @@
               <h3 class="font-semibold text-slate-300">BTC Price Chart</h3>
               <span class="text-xs text-slate-500 mono">24H</span>
             </div>
-            <div class="h-40 flex items-end gap-1" id="chart">
-              <!-- Populated by JS -->
+            <div class="h-40">
+              <canvas id="price-chart"></canvas>
             </div>
             <div class="flex justify-between mt-2 text-xs text-slate-600 mono">
               <span>00:00</span>
@@ -117,11 +163,11 @@
             </div>
           </div>
           
-          <!-- Fear & Greed -->
+          <!-- Fear & Greed Gauge -->
           <div class="bg-slate-900/60 rounded-xl p-5 border border-slate-800 slide-up" style="animation-delay: 0.5s;">
             <h3 class="font-semibold text-slate-300 mb-4">Fear & Greed Index</h3>
             <div class="relative h-4 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full overflow-hidden">
-              <div id="fear-indicator" class="absolute top-0 w-3 h-full bg-white rounded-full shadow-lg transition-all duration-500" style="left: 65%;"></div>
+              <div id="fear-indicator" class="absolute top-0 w-3 h-full bg-white rounded-full shadow-lg transition-all duration-500" style="left: 0%;"></div>
             </div>
             <div class="flex justify-between mt-2 text-xs text-slate-500">
               <span>Extreme Fear</span>
@@ -129,8 +175,8 @@
               <span>Extreme Greed</span>
             </div>
             <p class="text-center mt-4">
-              <span class="text-2xl font-bold text-emerald-400 mono" id="fear-value">68</span>
-              <span class="text-slate-400 ml-2">Greed</span>
+              <span class="text-2xl font-bold text-emerald-400 mono" id="fear-value">-</span>
+              <span class="text-slate-400 ml-2" id="fear-label">Loading...</span>
             </p>
           </div>
           
@@ -139,7 +185,35 @@
             <h3 class="font-semibold text-slate-300 mb-4">🔥 Trending</h3>
             <div class="space-y-3" id="trending">
               <!-- Populated by JS -->
+              <div class="text-center py-4">
+                <div class="spinner" style="width: 24px; height: 24px; margin: 0 auto;"></div>
+              </div>
             </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Coin Table -->
+      <div class="mt-8 slide-up" style="animation-delay: 0.7s;">
+        <h2 class="text-lg font-semibold text-slate-300 mb-4">Market Overview</h2>
+        <div class="bg-slate-900/60 rounded-xl border border-slate-800 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-slate-800">
+                  <th class="text-left p-4 text-slate-400 font-medium">#</th>
+                  <th class="text-left p-4 text-slate-400 font-medium">Name</th>
+                  <th class="text-left p-4 text-slate-400 font-medium">Price</th>
+                  <th class="text-left p-4 text-slate-400 font-medium">24h Change</th>
+                  <th class="text-left p-4 text-slate-400 font-medium">Market Cap</th>
+                  <th class="text-left p-4 text-slate-400 font-medium">24h Volume</th>
+                  <th class="text-left p-4 text-slate-400 font-medium">Last 7 Days</th>
+                </tr>
+              </thead>
+              <tbody id="coin-table">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -147,216 +221,443 @@
   </div>
 
   <script>
-    // Configuration
-    const config = {
-      dashboard_title: 'Crypto Dashboard',
-      welcome_message: 'Real-time cryptocurrency market overview',
-      background_color: '#020617',
-      surface_color: '#0f172a',
-      text_color: '#e2e8f0',
-      primary_action: '#00ff88',
-      secondary_action: '#38bdf8',
-      // Add API endpoint (using a free crypto API)
-      api_endpoint: 'https://api.coingecko.com/api/v3'
+    // CoinGecko API Configuration
+    const COINGECKO_API = {
+      BASE_URL: 'https://api.coingecko.com/api/v3',
+      ENDPOINTS: {
+        GLOBAL: '/global',
+        COINS_MARKET: '/coins/markets',
+        COIN: '/coins',
+        TRENDING: '/search/trending',
+        EXCHANGES: '/exchanges'
+      }
     };
 
-    // Initial crypto data (fallback if API fails)
-    const initialCryptoData = [
-      { symbol: 'BTC', name: 'Bitcoin', price: 67542.18, change: 2.34, icon: '₿', color: '#f7931a' },
-      { symbol: 'ETH', name: 'Ethereum', price: 3521.47, change: -1.23, icon: 'Ξ', color: '#627eea' },
-      { symbol: 'SOL', name: 'Solana', price: 142.89, change: 5.67, icon: '◎', color: '#00ffa3' },
-      { symbol: 'BNB', name: 'BNB', price: 584.32, change: 0.89, icon: '◈', color: '#f3ba2f' },
-      { symbol: 'XRP', name: 'Ripple', price: 0.5234, change: -2.45, icon: '✕', color: '#00aae4' },
-      { symbol: 'ADA', name: 'Cardano', price: 0.4521, change: 3.21, icon: '₳', color: '#0033ad' }
-    ];
+    // Cryptocurrency icons and colors mapping
+    const CRYPTO_ICONS = {
+      bitcoin: { icon: '₿', color: '#f7931a' },
+      ethereum: { icon: 'Ξ', color: '#627eea' },
+      'binancecoin': { icon: '◈', color: '#f3ba2f' },
+      solana: { icon: '◎', color: '#00ffa3' },
+      ripple: { icon: '✕', color: '#00aae4' },
+      cardano: { icon: '₳', color: '#0033ad' },
+      dogecoin: { icon: 'Ð', color: '#c2a633' },
+      polkadot: { icon: '●', color: '#e6007a' },
+      'tron': { icon: 'T', color: '#ff060a' },
+      'chainlink': { icon: '🔗', color: '#2a5ada' },
+      'litecoin': { icon: 'Ł', color: '#bfbbbb' },
+      'bitcoin-cash': { icon: '฿', color: '#8dc351' }
+    };
 
-    let cryptoData = [...initialCryptoData];
-    let chartData = Array.from({ length: 24 }, () => 50 + Math.random() * 50);
+    // Default icon for unknown coins
+    const DEFAULT_ICON = { icon: '●', color: '#9ca3af' };
+
+    // State management
+    let cryptoData = [];
+    let marketData = {};
+    let chartInstance = null;
+    let isLoading = false;
 
     // Utility functions
     function formatPrice(price) {
+      if (!price) return '$0.00';
+      if (price >= 1000000) {
+        return '$' + (price / 1000000).toFixed(2) + 'M';
+      }
       if (price >= 1000) {
         return '$' + price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
       if (price >= 1) return '$' + price.toFixed(2);
-      return '$' + price.toFixed(4);
+      if (price >= 0.01) return '$' + price.toFixed(4);
+      return '$' + price.toFixed(6);
     }
 
     function formatChange(change) {
+      if (change === undefined || change === null) return '+0.00%';
       const sign = change >= 0 ? '+' : '';
       return sign + change.toFixed(2) + '%';
     }
 
     function formatLargeNumber(num) {
+      if (!num) return '$0';
       if (num >= 1e12) return '$' + (num / 1e12).toFixed(2) + 'T';
       if (num >= 1e9) return '$' + (num / 1e9).toFixed(2) + 'B';
       if (num >= 1e6) return '$' + (num / 1e6).toFixed(2) + 'M';
+      if (num >= 1e3) return '$' + (num / 1e3).toFixed(2) + 'K';
       return '$' + num.toFixed(2);
     }
 
+    function formatPercentage(num) {
+      if (!num) return '0.00%';
+      return num.toFixed(2) + '%';
+    }
+
+    function getCryptoIcon(id) {
+      return CRYPTO_ICONS[id] || DEFAULT_ICON;
+    }
+
+    function updateLastUpdatedTime() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+      const dateString = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      document.getElementById('last-updated').textContent = `${dateString} ${timeString}`;
+    }
+
+    // Fetch market data from CoinGecko
+    async function fetchMarketData() {
+      try {
+        isLoading = true;
+        
+        // Fetch global market data
+        const globalResponse = await fetch(`${COINGECKO_API.BASE_URL}${COINGECKO_API.ENDPOINTS.GLOBAL}`);
+        const globalData = await globalResponse.json();
+        
+        // Fetch top 10 cryptocurrencies
+        const coinsResponse = await fetch(
+          `${COINGECKO_API.BASE_URL}${COINGECKO_API.ENDPOINTS.COINS_MARKET}?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=true&price_change_percentage=24h,7d`
+        );
+        const coinsData = await coinsResponse.json();
+        
+        // Fetch trending coins
+        const trendingResponse = await fetch(`${COINGECKO_API.BASE_URL}${COINGECKO_API.ENDPOINTS.TRENDING}`);
+        const trendingData = await trendingResponse.json();
+        
+        // Fetch Fear & Greed Index from alternative API
+        let fearGreedData = { value: 50, value_classification: 'Neutral' };
+        try {
+          const fngResponse = await fetch('https://api.alternative.me/fng/?limit=1');
+          const fngData = await fngResponse.json();
+          if (fngData.data && fngData.data[0]) {
+            fearGreedData = {
+              value: parseInt(fngData.data[0].value),
+              value_classification: fngData.data[0].value_classification
+            };
+          }
+        } catch (error) {
+          console.warn('Failed to fetch Fear & Greed Index, using fallback');
+        }
+        
+        return {
+          global: globalData.data,
+          coins: coinsData,
+          trending: trendingData,
+          fearGreed: fearGreedData
+        };
+      } catch (error) {
+        console.error('Error fetching market data:', error);
+        throw error;
+      } finally {
+        isLoading = false;
+      }
+    }
+
     // Render functions
-    function renderTicker() {
+    function renderTicker(data) {
       const ticker = document.getElementById('ticker');
-      const items = [...cryptoData, ...cryptoData].map(coin => `
-        <span class="inline-flex items-center gap-2 px-4">
-          <span class="font-semibold">${coin.symbol}</span>
-          <span class="mono text-sm">${formatPrice(coin.price)}</span>
-          <span class="text-xs ${coin.change >= 0 ? 'price-up' : 'price-down'}">${formatChange(coin.change)}</span>
-        </span>
-      `).join('');
+      if (!data || data.length === 0) return;
+      
+      const items = [...data, ...data].map(coin => {
+        const change = coin.price_change_percentage_24h || 0;
+        return `
+          <span class="inline-flex items-center gap-2 px-4">
+            <span class="font-semibold">${coin.symbol.toUpperCase()}</span>
+            <span class="mono text-sm">${formatPrice(coin.current_price)}</span>
+            <span class="text-xs ${change >= 0 ? 'price-up' : 'price-down'}">${formatChange(change)}</span>
+          </span>
+        `;
+      }).join('');
+      
       ticker.innerHTML = items;
     }
 
-    function renderCryptoCards() {
+    function renderCryptoCards(data) {
       const container = document.getElementById('crypto-cards');
-      if (!container) return;
+      if (!data || data.length === 0) return;
       
-      container.innerHTML = cryptoData.map((coin, i) => `
-        <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer slide-up ${coin.change >= 0 ? 'bg-up' : 'bg-down'}" style="animation-delay: ${0.4 + i * 0.1}s;">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl" style="background: ${coin.color}22; color: ${coin.color};">
-                ${coin.icon}
+      container.innerHTML = data.slice(0, 6).map((coin, i) => {
+        const change = coin.price_change_percentage_24h || 0;
+        const iconData = getCryptoIcon(coin.id);
+        const sparkline = coin.sparkline_in_7d?.price || [];
+        
+        return `
+          <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer slide-up ${change >= 0 ? 'bg-up' : 'bg-down'}" style="animation-delay: ${0.4 + i * 0.1}s;" onclick="showCoinDetail('${coin.id}')">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl" style="background: ${iconData.color}22; color: ${iconData.color};">
+                  ${iconData.icon}
+                </div>
+                <div>
+                  <h3 class="font-semibold">${coin.name}</h3>
+                  <p class="text-slate-500 text-sm">${coin.symbol.toUpperCase()}</p>
+                </div>
               </div>
-              <div>
-                <h3 class="font-semibold">${coin.name}</h3>
-                <p class="text-slate-500 text-sm">${coin.symbol}</p>
+              <div class="text-right">
+                <p class="font-semibold mono text-lg">${formatPrice(coin.current_price)}</p>
+                <p class="text-sm mono ${change >= 0 ? 'price-up' : 'price-down'}">${formatChange(change)}</p>
               </div>
             </div>
-            <div class="text-right">
-              <p class="font-semibold mono text-lg">${formatPrice(coin.price)}</p>
-              <p class="text-sm mono ${coin.change >= 0 ? 'price-up' : 'price-down'}">${formatChange(coin.change)}</p>
+            <!-- Mini sparkline -->
+            <div class="mt-3 h-8 flex items-end gap-px">
+              ${sparkline.slice(0, 12).map((price, index) => {
+                const prices = sparkline.slice(0, 12);
+                const min = Math.min(...prices);
+                const max = Math.max(...prices);
+                const range = max - min;
+                const height = range > 0 ? ((price - min) / range) * 100 : 50;
+                return `<div class="flex-1 rounded-sm transition-all" style="height: ${height}%; background: ${change >= 0 ? '#00ff8833' : '#ff475733'};"></div>`;
+              }).join('')}
             </div>
           </div>
-          <div class="mt-3 h-8 flex items-end gap-px">
-            ${Array.from({ length: 12 }, () => {
-              const height = 20 + Math.random() * 80;
-              return `<div class="flex-1 rounded-sm transition-all" style="height: ${height}%; background: ${coin.change >= 0 ? '#00ff8833' : '#ff475733'};"></div>`;
-            }).join('')}
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function renderChart() {
-      const chart = document.getElementById('chart');
-      if (!chart) return;
-      
-      const max = Math.max(...chartData);
-      chart.innerHTML = chartData.map((val, i) => {
-        const height = (val / max) * 100;
-        const isRecent = i > chartData.length - 4;
-        return `<div class="flex-1 rounded-t chart-bar" style="height: ${height}%; background: linear-gradient(to top, ${isRecent ? '#00ff88' : '#00ff8866'}, ${isRecent ? '#00ff8888' : '#00ff8822'});"></div>`;
+        `;
       }).join('');
     }
 
-    function renderTrending() {
+    function renderMarketStats(data) {
+      if (!data.global) return;
+      
+      const { total_market_cap, total_volume, market_cap_percentage } = data.global;
+      
+      document.getElementById('market-cap').textContent = formatLargeNumber(total_market_cap.usd);
+      document.getElementById('volume').textContent = formatLargeNumber(total_volume.usd);
+      document.getElementById('btc-dom').textContent = formatPercentage(market_cap_percentage.btc);
+      
+      // Update Fear & Greed
+      const fearValue = data.fearGreed.value;
+      document.getElementById('fear-greed').textContent = fearValue;
+      document.getElementById('fear-value').textContent = fearValue;
+      document.getElementById('fear-label').textContent = data.fearGreed.value_classification;
+      
+      // Update indicator position (0-100% scale)
+      const indicator = document.getElementById('fear-indicator');
+      if (indicator) {
+        indicator.style.left = `${fearValue}%`;
+      }
+    }
+
+    function renderPriceChart(data) {
+      const canvas = document.getElementById('price-chart');
+      if (!canvas || !data || data.length === 0) return;
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Destroy previous chart if exists
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+      
+      // Get Bitcoin data (assuming it's the first coin)
+      const btcData = data.find(coin => coin.id === 'bitcoin');
+      if (!btcData || !btcData.sparkline_in_7d) return;
+      
+      const sparkline = btcData.sparkline_in_7d.price || [];
+      const labels = Array.from({ length: sparkline.length }, (_, i) => i);
+      
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'BTC Price',
+            data: sparkline,
+            borderColor: '#00ff88',
+            backgroundColor: 'rgba(0, 255, 136, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: function(context) {
+                  return `BTC: ${formatPrice(context.parsed.y)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              display: false
+            },
+            y: {
+              display: false,
+              grid: {
+                display: false
+              }
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'nearest'
+          }
+        }
+      });
+    }
+
+    function renderTrending(data) {
       const container = document.getElementById('trending');
-      if (!container) return;
+      if (!data || !data.coins) return;
       
-      // Mock trending data - in real app, fetch from API
-      const trendingCoins = [
-        { symbol: 'PEPE', change: 24.5 },
-        { symbol: 'WIF', change: 18.2 },
-        { symbol: 'BONK', change: 15.8 }
-      ];
-      
-      container.innerHTML = trendingCoins.map((coin, i) => `
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-slate-500 text-sm">${i + 1}</span>
-            <span class="font-medium">${coin.symbol}</span>
+      container.innerHTML = data.coins.slice(0, 5).map((item, i) => {
+        const coin = item.item;
+        // Use mock change for now as trending API doesn't provide price change
+        const change = 5 + Math.random() * 20; // Random positive change for trending coins
+        
+        return `
+          <div class="flex items-center justify-between hover:bg-slate-800/50 p-2 rounded-lg transition-colors">
+            <div class="flex items-center gap-2">
+              <span class="text-slate-500 text-sm">${i + 1}</span>
+              <img src="${coin.small}" alt="${coin.name}" class="w-6 h-6 rounded-full">
+              <span class="font-medium">${coin.symbol.toUpperCase()}</span>
+            </div>
+            <span class="price-up text-sm mono">+${change.toFixed(1)}%</span>
           </div>
-          <span class="price-up text-sm mono">+${coin.change}%</span>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
-    function renderMarketStats(stats) {
-      document.getElementById('market-cap').textContent = formatLargeNumber(stats.total_market_cap || 2410000000000);
-      document.getElementById('volume').textContent = formatLargeNumber(stats.total_volume || 89200000000);
-      document.getElementById('btc-dom').textContent = (stats.btc_dominance || 52.4).toFixed(1) + '%';
-      document.getElementById('active-coins').textContent = (stats.active_cryptocurrencies || 12847).toLocaleString();
+    function renderCoinTable(data) {
+      const container = document.getElementById('coin-table');
+      if (!data || data.length === 0) return;
+      
+      container.innerHTML = data.slice(0, 10).map((coin, index) => {
+        const change24h = coin.price_change_percentage_24h || 0;
+        const change7d = coin.price_change_percentage_7d_in_currency || 0;
+        const iconData = getCryptoIcon(coin.id);
+        
+        // Generate mini sparkline for 7d change
+        const sparkline = coin.sparkline_in_7d?.price || [];
+        const sparklinePoints = sparkline.length > 7 ? sparkline.slice(-7) : sparkline;
+        
+        return `
+          <tr class="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+            <td class="p-4 text-slate-400">${index + 1}</td>
+            <td class="p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm" style="background: ${iconData.color}22; color: ${iconData.color};">
+                  ${iconData.icon}
+                </div>
+                <div>
+                  <div class="font-medium">${coin.name}</div>
+                  <div class="text-slate-500 text-sm">${coin.symbol.toUpperCase()}</div>
+                </div>
+              </div>
+            </td>
+            <td class="p-4 mono font-medium">${formatPrice(coin.current_price)}</td>
+            <td class="p-4">
+              <span class="mono ${change24h >= 0 ? 'price-up' : 'price-down'}">
+                ${formatChange(change24h)}
+              </span>
+            </td>
+            <td class="p-4 mono">${formatLargeNumber(coin.market_cap)}</td>
+            <td class="p-4 mono">${formatLargeNumber(coin.total_volume)}</td>
+            <td class="p-4">
+              <div class="flex items-center gap-2">
+                <span class="mono text-sm ${change7d >= 0 ? 'price-up' : 'price-down'}">
+                  ${formatChange(change7d)}
+                </span>
+                <div class="h-6 w-16 flex items-end gap-px">
+                  ${sparklinePoints.map((price, i) => {
+                    const prices = sparklinePoints;
+                    const min = Math.min(...prices);
+                    const max = Math.max(...prices);
+                    const range = max - min;
+                    const height = range > 0 ? ((price - min) / range) * 100 : 50;
+                    return `<div class="flex-1 rounded-sm" style="height: ${height}%; background: ${change7d >= 0 ? '#00ff88' : '#ff4757'};"></div>`;
+                  }).join('')}
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
-    // Update functions
-    function updatePrices() {
-      // Simulate price changes
-      cryptoData.forEach(coin => {
-        const changePercent = (Math.random() - 0.5) * 0.5;
-        coin.price *= (1 + changePercent / 100);
-        coin.change += (Math.random() - 0.5) * 0.3;
-        coin.change = Math.max(-15, Math.min(15, coin.change));
-      });
-      
-      // Update chart
-      chartData.shift();
-      chartData.push(50 + Math.random() * 50);
-      
-      renderTicker();
-      renderCryptoCards();
-      renderChart();
-    }
-
-    // Initialize with mock data
-    function initialize() {
-      // Set initial market stats
-      renderMarketStats({
-        total_market_cap: 2410000000000,
-        total_volume: 89200000000,
-        btc_dominance: 52.4,
-        active_cryptocurrencies: 12847
-      });
-      
-      // Render all components
-      renderTicker();
-      renderCryptoCards();
-      renderChart();
-      renderTrending();
-      
-      // Start updates
-      setInterval(updatePrices, 3000);
-    }
-
-    // Apply configuration
-    function applyConfig(newConfig) {
-      Object.assign(config, newConfig);
-      
-      const title = document.getElementById('dashboard-title');
-      const welcome = document.getElementById('welcome-message');
-      
-      if (title) title.textContent = config.dashboard_title;
-      if (welcome) welcome.textContent = config.welcome_message;
-      
-      // Apply colors
-      document.body.style.backgroundColor = config.background_color;
-      
-      // Update other color-related styles if needed
-      document.documentElement.style.setProperty('--primary-action', config.primary_action);
-      document.documentElement.style.setProperty('--secondary-action', config.secondary_action);
-    }
-
-    // Initialize when DOM is loaded
-    document.addEventListener('DOMContentLoaded', () => {
-      initialize();
-      applyConfig(config);
-      
-      // If Element SDK is available, integrate with it
-      if (typeof elementSdk !== 'undefined') {
-        try {
-          elementSdk.init({
-            defaultConfig: config,
-            onConfigChange: applyConfig
-          });
-        } catch (error) {
-          console.warn('Element SDK initialization failed:', error);
+    async function updateDashboard() {
+      try {
+        const data = await fetchMarketData();
+        
+        // Update all sections
+        renderMarketStats(data);
+        renderTicker(data.coins);
+        renderCryptoCards(data.coins);
+        renderPriceChart(data.coins);
+        renderTrending(data.trending);
+        renderCoinTable(data.coins);
+        
+        // Update timestamp
+        updateLastUpdatedTime();
+        
+        // Update page title with BTC price
+        const btc = data.coins.find(coin => coin.id === 'bitcoin');
+        if (btc) {
+          document.title = `BTC $${btc.current_price.toLocaleString()} | Crypto Dashboard`;
+        }
+      } catch (error) {
+        console.error('Failed to update dashboard:', error);
+        // Show error message
+        const container = document.getElementById('crypto-cards');
+        if (container) {
+          container.innerHTML = `
+            <div class="text-center p-8 bg-red-900/20 border border-red-800 rounded-xl">
+              <p class="text-red-400">Failed to load data. Please try again.</p>
+              <button onclick="updateDashboard()" class="mt-4 px-4 py-2 bg-red-800 hover:bg-red-700 rounded-lg transition-colors">
+                Retry
+              </button>
+            </div>
+          `;
         }
       }
+    }
+
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initial load
+      updateDashboard();
+      
+      // Set up refresh button
+      document.getElementById('refresh-btn').addEventListener('click', updateDashboard);
+      
+      // Auto-refresh every 60 seconds
+      setInterval(updateDashboard, 60000);
+      
+      // Auto-refresh ticker animation (just visual, not data)
+      setInterval(() => {
+        const ticker = document.getElementById('ticker');
+        if (ticker) {
+          ticker.style.animation = 'none';
+          setTimeout(() => {
+            ticker.style.animation = 'ticker 30s linear infinite';
+          }, 10);
+        }
+      }, 30000);
     });
 
-    // Error handling for missing elements
-    window.addEventListener('error', (e) => {
-      console.error('Error:', e.message);
+    // Show coin detail (placeholder function)
+    function showCoinDetail(coinId) {
+      alert(`Showing details for ${coinId}. In a full implementation, this would open a detailed view or modal.`);
+    }
+
+    // Handle offline/online status
+    window.addEventListener('online', updateDashboard);
+    window.addEventListener('offline', () => {
+      const container = document.getElementById('crypto-cards');
+      if (container) {
+        container.innerHTML = `
+          <div class="text-center p-8 bg-yellow-900/20 border border-yellow-800 rounded-xl">
+            <p class="text-yellow-400">You are offline. Data may be outdated.</p>
+          </div>
+        `;
+      }
     });
   </script>
 </body>
